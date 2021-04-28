@@ -3,6 +3,12 @@ const SW = require('stopword');
 const bayes = require('bayes');
 const fs = require('fs');
 
+// NEW!!!
+const Datastore = require('nedb');
+const database = new Datastore('database.db');
+database.loadDatabase();
+// database.insert({human: "hello computer", computer: "hello human"});
+
 // app --> application
 // using the constructor to create an express app
 var app = express();
@@ -35,12 +41,35 @@ function newConnection(socket){
     }
 
     socket.on('guess', guessMsg);
+    // NEW
+    socket.on('getData', dataMsg);
 
     async function guessMsg(data){
-        var data_arr = data.split(" ");
+        var data_arr = data.human.split(" ");
         var words = cleanup(data_arr);
         category = await revivedClassifier.categorize(words.join());
+        // NEW
+        // database_entry = {
+        //     human: data,
+        //     computer: category
+        // }
+        // FOR IMAGES
+        data.computer = category;
+        // database.insert(database_entry);
+        database.insert(data);
+
         socket.emit('guess', category);
+    }
+
+    function dataMsg(data){
+        // Finding all chats about a particular topic
+        database.find({ computer: data }, function (err, docs) {
+            if(err){
+                console.log(err);
+            } else {
+                socket.emit('getData', docs);
+            }
+        });
     }
 }
 
